@@ -1,0 +1,33 @@
+{
+    "name": "mexancode/laravel-api-admin",
+    "description": "Generador automatico de APIs RESTful para Laravel",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Mexancode\\ApiAdmin\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Mexancode\\ApiAdmin\\Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ricardo Mex",
+            "email": "ricardo.mexan@hotmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^11.0|^12.0"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Mexancode\\ApiAdmin\\ApiAdminServiceProvider"
+            ]
+        }
+    }
+}

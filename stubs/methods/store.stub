@@ -1,0 +1,9 @@
+public function store({{requestClass}} $request)
+{
+    ${{modelVariable}} ={{model}}::create($request->validated());
+    
+    return response()->json([
+        'message' => '{{model}} creado exitosamente',
+        'data' => new{{resourceClass}}(${{modelVariable}})
+    ], 201);
+}

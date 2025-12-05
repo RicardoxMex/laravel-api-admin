@@ -1,0 +1,79 @@
+<?php
+
+namespace {{namespace}};
+
+use Tests\TestCase;
+use {{modelNamespace}}\{{model}};
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+class {{class}} extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_can_list_{{modelPlural}}(): void
+    {
+       {{model}}::factory()->count(3)->create();
+
+        $response = $this->getJson('{{route}}');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => ['id']
+                ]
+            ]);
+    }
+
+    public function test_can_create_{{modelSingular}}(): void
+    {
+        $data = [
+            // TODO: Add test data
+        ];
+
+        $response = $this->postJson('{{route}}', $data);
+
+        $response->assertStatus(201)
+            ->assertJsonStructure(['data' => ['id']]);
+        
+        $this->assertDatabaseHas('{{table}}', $data);
+    }
+
+    public function test_can_show_{{modelSingular}}(): void
+    {
+        ${{modelVariable}} ={{model}}::factory()->create();
+
+        $response = $this->getJson('{{route}}/' . ${{modelVariable}}->id);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'data' => [
+                    'id' => ${{modelVariable}}->id
+                ]
+            ]);
+    }
+
+    public function test_can_update_{{modelSingular}}(): void
+    {
+        ${{modelVariable}} ={{model}}::factory()->create();
+        $data = [
+            // TODO: Add test data
+        ];
+
+        $response = $this->putJson('{{route}}/' . ${{modelVariable}}->id, $data);
+
+        $response->assertStatus(200)
+            ->assertJsonStructure(['data' => ['id']]);
+        
+        $this->assertDatabaseHas('{{table}}', $data);
+    }
+
+    public function test_can_delete_{{modelSingular}}(): void
+    {
+        ${{modelVariable}} ={{model}}::factory()->create();
+
+        $response = $this->deleteJson('{{route}}/' . ${{modelVariable}}->id);
+
+        $response->assertStatus(204);
+        $this->assertDatabaseMissing('{{table}}', ['id' => ${{modelVariable}}->id]);
+    }
+}

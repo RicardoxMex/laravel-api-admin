@@ -1,0 +1,9 @@
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy({{model}} ${{modelVariable}}): JsonResponse
+    {
+        ${{modelVariable}}->delete();
+        
+        return response()->json(null, 204);
+    }
