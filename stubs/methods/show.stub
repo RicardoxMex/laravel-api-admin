@@ -1,7 +1,7 @@
     /**
      * Display the specified resource.
      */
-    public function show({{model}} ${{modelVariable}}):{{resourceClass}}
+    public function show({{model}} ${{modelVariable}}) : {{resourceClass}}
     {
-        return new{{resourceClass}}(${{modelVariable}});
+        return new {{resourceClass}}(${{modelVariable}});
     }

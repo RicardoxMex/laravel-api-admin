@@ -8,7 +8,7 @@ use App\Http\Resources\{{resourceClass}};
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
-class {{model}} Controller extends Controller
+class {{model}}Controller extends Controller
 {
 {{methods}}
 }

@@ -1,12 +1,12 @@
     /**
      * Update the specified resource in storage.
      */
-    public function update({{requestClass}} $request,{{model}} ${{modelVariable}}):{{resourceClass}}
+    public function update({{requestClass}} $request,{{model}} ${{modelVariable}}) : {{resourceClass}}
     {
         ${{modelVariable}}->update($request->validated());
         
         return response()->json(['message' => 
             '{{model}} creado exitosamente',
-            'data' => new{{resourceClass}}(${{modelVariable}})
+            'data' => new {{resourceClass}}(${{modelVariable}})
         ], 201);
     }

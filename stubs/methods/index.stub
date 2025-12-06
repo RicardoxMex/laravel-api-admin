@@ -1,6 +1,6 @@
 public function index(Request $request)
 {
-    $query ={{model}}::query();
+    $query = {{model}}::query();
     
     // Filtros
     if ($request->has('search')) {
@@ -16,5 +16,5 @@ public function index(Request $request)
     $perPage = $request->get('per_page', config('api-admin.pagination_limit'));
     ${{modelVariable}} = $query->paginate($perPage);
     
-    return{{resourceClass}}::collection(${{modelVariable}});
+    return {{resourceClass}}::collection(${{modelVariable}});
 }
