@@ -41,20 +41,23 @@ class MakeApiDocs extends Command
                 return $this->getDefaultColumns();
             }
 
-            $columns = Schema::getColumnListing($tableName);
             $columnDetails = [];
+            
+            // Obtener información detallada de las columnas
+            $columnsInfo = $this->getDetailedColumns($tableName);
 
-            foreach ($columns as $column) {
+            foreach ($columnsInfo as $columnInfo) {
+                $columnName = $columnInfo->Field;
+                
                 // Excluir columnas de sistema
-                if (in_array($column, ['id', 'created_at', 'updated_at', 'deleted_at'])) {
+                if (in_array($columnName, ['id', 'created_at', 'updated_at', 'deleted_at'])) {
                     continue;
                 }
 
-                $type = Schema::getColumnType($tableName, $column);
                 $columnDetails[] = [
-                    'name' => $column,
-                    'type' => $this->mapColumnType($type),
-                    'required' => $this->isColumnRequired($tableName, $column)
+                    'name' => $columnName,
+                    'type' => $this->mapColumnType($columnInfo->Type),
+                    'required' => $columnInfo->Null === 'NO' && $columnInfo->Default === null
                 ];
             }
 
@@ -65,39 +68,81 @@ class MakeApiDocs extends Command
         }
     }
 
+    protected function getDetailedColumns($tableName)
+    {
+        try {
+            // Para MySQL/MariaDB
+            return DB::select("SHOW COLUMNS FROM {$tableName}");
+        } catch (\Exception $e) {
+            // Fallback para otros drivers
+            $this->warn("No se pudo obtener información detallada de columnas.");
+            $columns = Schema::getColumnListing($tableName);
+            $result = [];
+            
+            foreach ($columns as $column) {
+                $result[] = (object)[
+                    'Field' => $column,
+                    'Type' => Schema::getColumnType($tableName, $column),
+                    'Null' => 'YES',
+                    'Default' => null
+                ];
+            }
+            
+            return $result;
+        }
+    }
+
     protected function mapColumnType($dbType)
     {
+        // Normalizar el tipo a minúsculas
+        $dbType = strtolower($dbType);
+        
         $typeMap = [
+            // Integers
             'integer' => 'integer',
+            'int' => 'integer',
             'bigint' => 'integer',
+            'biginteger' => 'integer',
             'smallint' => 'integer',
+            'tinyint' => 'integer',
+            'mediumint' => 'integer',
+            
+            // Strings
             'string' => 'string',
+            'varchar' => 'string',
+            'char' => 'string',
             'text' => 'string',
+            'mediumtext' => 'string',
+            'longtext' => 'string',
+            'tinytext' => 'string',
+            
+            // Boolean
             'boolean' => 'boolean',
+            'bool' => 'boolean',
+            'tinyint(1)' => 'boolean',
+            
+            // Dates
             'date' => 'date',
             'datetime' => 'datetime',
             'timestamp' => 'datetime',
+            'time' => 'time',
+            
+            // Numbers
             'decimal' => 'number',
+            'numeric' => 'number',
             'float' => 'number',
             'double' => 'number',
+            'real' => 'number',
+            
+            // JSON
             'json' => 'object',
+            'jsonb' => 'object',
         ];
 
         return $typeMap[$dbType] ?? 'string';
     }
 
-    protected function isColumnRequired($tableName, $columnName)
-    {
-        try {
-            $column = DB::select("SHOW COLUMNS FROM {$tableName} WHERE Field = ?", [$columnName]);
-            if (!empty($column)) {
-                return $column[0]->Null === 'NO' && $column[0]->Default === null;
-            }
-        } catch (\Exception $e) {
-            // Si falla, asumir que no es requerido
-        }
-        return false;
-    }
+
 
     protected function getDefaultColumns()
     {
@@ -196,8 +241,16 @@ class MakeApiDocs extends Command
 </head>
 <body class="bg-gray-50">
     <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <div class="mb-4">
+            <a href="/api-docs" class="inline-flex items-center text-blue-600 hover:text-blue-800">
+                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Back to API List
+            </a>
+        </div>
         <div class="mb-8">
-            <h1 class="text-4xl font-bold text-gray-900 mb-2">Endpoints</h1>
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">{$modelName} API</h1>
             <p class="text-gray-600">Manage your API endpoints</p>
         </div>
 
@@ -557,12 +610,146 @@ HTML;
 
         if (strpos($routesContent, $routeLine) !== false) {
             $this->info("La ruta de documentación ya existe en web.php");
+        } else {
+            $routesContent = rtrim($routesContent) . "\n\n" . $routeLine . "\n";
+            File::put($routesPath, $routesContent);
+            $this->info("Ruta de documentación agregada a routes/web.php");
+        }
+
+        // Registrar API en el índice
+        $this->registerApiInIndex($modelName, $routeName);
+        
+        // Generar vista índice
+        $this->generateIndexView();
+    }
+
+    protected function registerApiInIndex($modelName, $routeName)
+    {
+        $indexPath = storage_path('app/api-docs-index.json');
+        
+        // Leer índice existente
+        $apis = [];
+        if (File::exists($indexPath)) {
+            $apis = json_decode(File::get($indexPath), true) ?? [];
+        }
+
+        // Agregar o actualizar API
+        $apiKey = $routeName;
+        $apis[$apiKey] = [
+            'name' => $modelName,
+            'route' => $routeName,
+            'url' => "/api-docs/{$routeName}",
+            'api_url' => "/api/" . $routeName,
+            'updated_at' => now()->toDateTimeString()
+        ];
+
+        // Guardar índice
+        File::put($indexPath, json_encode($apis, JSON_PRETTY_PRINT));
+    }
+
+    protected function generateIndexView()
+    {
+        $indexPath = storage_path('app/api-docs-index.json');
+        
+        if (!File::exists($indexPath)) {
+            return;
+        }
+
+        $apis = json_decode(File::get($indexPath), true) ?? [];
+        
+        $apisHtml = '';
+        foreach ($apis as $api) {
+            $apisHtml .= $this->buildApiCard($api);
+        }
+
+        $indexContent = <<<HTML
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">API Documentation</h1>
+            <p class="text-gray-600">Explore all available API endpoints</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+{$apisHtml}
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+
+        // Guardar vista índice
+        $viewsDir = resource_path('views/api-docs');
+        if (!File::exists($viewsDir)) {
+            File::makeDirectory($viewsDir, 0755, true);
+        }
+        
+        File::put(resource_path('views/api-docs/index.blade.php'), $indexContent);
+
+        // Agregar ruta índice si no existe
+        $this->addIndexRoute();
+    }
+
+    protected function buildApiCard($api)
+    {
+        $name = $api['name'];
+        $route = $api['route'];
+        $url = $api['url'];
+        $apiUrl = $api['api_url'];
+        $updatedAt = $api['updated_at'];
+
+        return <<<HTML
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-1">{$name}</h3>
+                        <code class="text-sm text-gray-600">{$apiUrl}</code>
+                    </div>
+                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Active</span>
+                </div>
+                
+                <div class="space-y-2 mb-4">
+                    <div class="flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Updated: {$updatedAt}</span>
+                    </div>
+                </div>
+
+                <a href="{$url}" class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors">
+                    View Documentation
+                </a>
+            </div>
+
+HTML;
+    }
+
+    protected function addIndexRoute()
+    {
+        $routesPath = base_path('routes/web.php');
+
+        if (!File::exists($routesPath)) {
+            return;
+        }
+
+        $routeLine = "Route::get('/api-docs', function () { return view('api-docs.index'); });";
+
+        $routesContent = File::get($routesPath);
+
+        if (strpos($routesContent, $routeLine) !== false) {
             return;
         }
 
         $routesContent = rtrim($routesContent) . "\n\n" . $routeLine . "\n";
         File::put($routesPath, $routesContent);
-
-        $this->info("Ruta de documentación agregada a routes/web.php");
     }
 }
