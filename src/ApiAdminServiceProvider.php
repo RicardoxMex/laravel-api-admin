@@ -4,6 +4,7 @@ namespace Mexancode\ApiAdmin;
 
 use Illuminate\Support\ServiceProvider;
 use Mexancode\ApiAdmin\Console\Commands\MakeApiAdmin;
+use Mexancode\ApiAdmin\Console\Commands\MakeApiDocs;
 
 class ApiAdminServiceProvider extends ServiceProvider
 {
@@ -18,6 +19,7 @@ class ApiAdminServiceProvider extends ServiceProvider
             // Registrar comando
             $this->commands([
                 MakeApiAdmin::class,
+                MakeApiDocs::class,
             ]);
         }
 
